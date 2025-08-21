@@ -1,0 +1,180 @@
+Download pi to local
+rsync -avz skroman@skromanpi.local:/home/skroman/mesh-music.js ~/Downloads/
+
+scp skroman@waddlebeats.local:/home/skroman/{mesh-music.js,package.json,package-lock.json} ~/Downloads/
+  pm2 restart /home/skroman/mesh-music.js --name mesh-music  ssh-keygen -R skromanpi.local  upload local to pi  rsync -avz --progress ~/Downloads/mesh-music.js skroman@skromanpi.local:/home/skroman/
+
+rsync -avz --progress ~/Downloads/mesh-music.js skroman@waddlebeats.local:/home/skroman/mesh-music.js --inplace
+
+
+Setup  sudo apt update
+sudo apt upgrade -y
+sudo apt install mpg123 -y
+
+
+sudo apt install nodejs npm -y
+node ~/mesh-music.js
+  sudo npm install -g pm2
+pm2 start ~/mesh-music.js --name mesh-music
+pm2 startup
+pm2 save
+     //////////// Music local  flash card
+
+Set one wifi password when flashing 
+sudo apt-get update
+
+sudo reboot
+
+curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+
+sudo apt-get install -y nodejs
+
+Check/// skroman@skromanpi:~ $ which node
+/usr/bin/node
+skroman@skromanpi:~ $ node -v
+v18.20.8
+skroman@skromanpi:~ $ npm -v
+10.8.2
+skroman@skromanpi:~ $ 
+ //upload local to pi
+
+rsync -avz --progress ~/Downloads/mesh-music.js skroman@skromanpi.local:/home/skroman/
+
+Install pkg// npm init -y
+npm install express node-fetch bonjour multer form-data cors
+npm uninstall node-fetch
+npm install node-fetch@2
+ sudo apt-get update
+sudo apt-get install -y mpg123
+
+sudo nano /boot/firmware/config.txt
+//add
+dtparam=audio=on
+audio_pwm_mode=2
+
+
+sudo npm install -g pm2
+
+cd /home/skroman
+pm2 start mesh-music.js --name mesh-music
+
+pm2 startup systemd
+
+pm2 save
+
+sudo env PATH=$PATH:/usr/bin /usr/lib/node_modules/pm2/bin/pm2 startup systemd -u skroman --hp /home/skroman
+
+Check pm2 status and reboot and again check
+
+sudo reboot
+
+
+ 
+ 
+
+////////////// RaspAP
+
+sudo apt update
+sudo apt install hostapd dnsmasq
+
+sudo systemctl stop hostapd
+sudo systemctl stop dnsmasq
+
+sudo nano /etc/hostapd/hostapd.conf
+
+#####
+interface=wlan0
+driver=nl80211
+ssid=Skroman-Mesh
+hw_mode=g
+channel=7
+wmm_enabled=0
+macaddr_acl=0
+auth_algs=1
+ignore_broadcast_ssid=0
+wpa=2
+wpa_passphrase=12345678
+wpa_key_mgmt=WPA-PSK
+wpa_pairwise=TKIP
+rsn_pairwise=CCMP
+######
+
+
+Tell systemd where config आहे:
+
+sudo nano /etc/default/hostapd
+
+###### last la add paste kraych he
+DAEMON_CONF="/etc/hostapd/hostapd.conf"
+######
+
+
+sudo mv /etc/dnsmasq.conf /etc/dnsmasq.conf.orig
+
+sudo nano /etc/dnsmasq.conf
+
+########
+interface=wlan0
+dhcp-range=192.168.4.2,192.168.4.20,255.255.255.0,24h
+#######
+
+sudo nano /etc/dhcpcd.conf
+
+######
+interface wlan0
+static ip_address=192.168.4.1/24
+nohook spa_supplicant
+######
+
+sudo apt install lighttpd php
+
+
+$ sudo nano /var/www/html/index.html
+
+#########
+<!DOCTYPE html>
+<html>
+<head><title>WiFi Setup</title></head>
+<body>
+  <h2>Enter WiFi Details</h2>
+  <form action="/save.php" method="POST">
+    SSID: <input type="text" name="ssid" /><br>
+    Password: <input type="password" name="password" /><br>
+    <input type="submit" value="Save" />
+  </form>
+</body>
+</html>
+
+#########
+
+sudo nano /var/www/html/save.php
+
+#############
+<?php
+$ssid = $_POST['ssid'];
+$pass = $_POST['password'];
+
+$config = 'network={
+    ssid="'.$ssid.'"
+    psk="'.$pass.'"
+}';
+
+file_put_contents('/etc/wpa_supplicant/wpa_supplicant.conf', $config, FILE_APPEND);
+
+exec("sudo reboot");
+?>
+############
+
+
+sudo systemctl unmask hostapd
+sudo systemctl enable hostapd
+sudo systemctl enable dnsmasq
+sudo systemctl restart hostapd
+sudo systemctl restart dnsmasq
+
+
+
+####NEW RASPAP
+
+sudo apt update && sudo apt upgrade -y
+
