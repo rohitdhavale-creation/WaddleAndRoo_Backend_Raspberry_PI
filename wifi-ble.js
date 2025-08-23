@@ -1,13 +1,25 @@
-
 const bleno = require('@abandonware/bleno');
-
 const fs = require("fs");
 const { exec } = require("child_process");
 const path = require("path");
+const os = require("os");   // <-- added for IP
 
 const SERVICE_UUID = "12345678-1234-5678-1234-56789abcdef0";
 const WIFI_CHAR_UUID = "abcdef01-1234-5678-1234-56789abcdef0";
 const STATUS_CHAR_UUID = "abcdef02-1234-5678-1234-56789abcdef0";
+
+// ---- helper: get current IP ----
+function getCurrentIP() {
+  const nets = os.networkInterfaces();
+  for (const name of Object.keys(nets)) {
+    for (const net of nets[name]) {
+      if (net.family === "IPv4" && !net.internal) {
+        return net.address;
+      }
+    }
+  }
+  return "0.0.0.0";
+}
 
 // ---- Status notify characteristic ----
 let updateStatus;
@@ -15,8 +27,17 @@ class StatusCharacteristic extends bleno.Characteristic {
   constructor() {
     super({
       uuid: STATUS_CHAR_UUID,
-      properties: ["notify"],
+      properties: ["notify", "write"],   // <-- added write support
     });
+  }
+
+  onWriteRequest(data, offset, withoutResponse, callback) {
+    const cmd = data.toString("utf8").trim();
+    if (cmd === "GET_IP") {
+      const ip = getCurrentIP();
+      this.sendStatus("IP:" + ip);
+    }
+    callback(this.RESULT_SUCCESS);
   }
 
   onSubscribe(maxValueSize, updateValueCallback) {
@@ -47,23 +68,22 @@ class WifiCharacteristic extends bleno.Characteristic {
     this.statusChar = statusChar;
   }
 
- onWriteRequest(data, offset, withoutResponse, callback) {
-  const msg = data.toString("utf8").trim();
-  console.log(" ^=^s  Received WiFi:", msg);
+  onWriteRequest(data, offset, withoutResponse, callback) {
+    const msg = data.toString("utf8").trim();
+    console.log(" ^=^s  Received WiFi:", msg);
 
-  try {
-    const [ssid, password] = msg.split("|");
+    try {
+      const [ssid, password] = msg.split("|");
 
-    if (!ssid || !password) {
-      this.statusChar.sendStatus("ERROR:INVALID_FORMAT");
-      return callback(this.RESULT_SUCCESS);
-    }
+      if (!ssid || !password) {
+        this.statusChar.sendStatus("ERROR:INVALID_FORMAT");
+        return callback(this.RESULT_SUCCESS);
+      }
 
-    const confPath = "/etc/wpa_supplicant/wpa_supplicant.conf";
-    let fileContent = fs.readFileSync(confPath, "utf8");
+      const confPath = "/etc/wpa_supplicant/wpa_supplicant.conf";
 
-    // ---- default template (up to your 2 admin networks) ----
-    const defaultPart = `ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
+      // ---- default template (up to your 2 admin networks) ----
+      const defaultPart = `ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
 update_config=1
 network={
         ssid="admin"
@@ -79,37 +99,36 @@ network={
 }
 `;
 
-    // ---- new WiFi (always overwrite last) ----
-    const newConf = `
+      // ---- new WiFi (always overwrite last) ----
+      const newConf = `
 network={
     ssid="${ssid}"
     psk="${password}"
 }
 `;
 
-    // overwrite file with default + new wifi
-    fs.writeFileSync(confPath, defaultPart + newConf);
+      // overwrite file with default + new wifi
+      fs.writeFileSync(confPath, defaultPart + newConf);
 
-    console.log(" ^|^e WiFi overwritten with:", ssid);
-    this.statusChar.sendStatus("WIFI_SAVED");
+      console.log(" ^|^e WiFi overwritten with:", ssid);
+      this.statusChar.sendStatus("WIFI_SAVED");
 
-    exec("wpa_cli -i wlan0 reconfigure", (err) => {
-      if (err) {
-        console.error(" ^}^l WiFi reconfigure failed:", err);
-        this.statusChar.sendStatus("WIFI_FAIL");
-      } else {
-        console.log(" ^=^z^` Trying WiFi connection...");
-        this.statusChar.sendStatus("WIFI_CONNECTING");
-      }
-    });
-  } catch (e) {
-    console.error(" ^}^l Error:", e);
-    this.statusChar.sendStatus("ERROR");
+      exec("wpa_cli -i wlan0 reconfigure", (err) => {
+        if (err) {
+          console.error(" ^}^l WiFi reconfigure failed:", err);
+          this.statusChar.sendStatus("WIFI_FAIL");
+        } else {
+          console.log(" ^=^z^` Trying WiFi connection...");
+          this.statusChar.sendStatus("WIFI_CONNECTING");
+        }
+      });
+    } catch (e) {
+      console.error(" ^}^l Error:", e);
+      this.statusChar.sendStatus("ERROR");
+    }
+
+    callback(this.RESULT_SUCCESS);
   }
-
-  callback(this.RESULT_SUCCESS);
-}
-
 }
 
 // ---- BLE Setup ----
@@ -136,3 +155,9 @@ bleno.on("advertisingStart", (err) => {
     console.log("✅ BLE Service ready");
   }
 });
+
+
+
+
+
+////updated
