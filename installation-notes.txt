@@ -174,7 +174,27 @@ sudo systemctl restart dnsmasq
 
 
 
-####NEW RASPAP
+####NEW SPOTIFY  sudo apt install -y build-essential curl
+curl -sL https://dtcooper.github.io/raspotify/install.sh | sh
 
-sudo apt update && sudo apt upgrade -y
+For Apple Music
+sudo apt install shairport-sync -y sudo systemctl status shairport-sync
+   ////////////bluttooth wifi   sudo apt install pi-bluetooth bluez blueman -y  upload wifi_ble.js file code npm install @abandonware/bleno
 
+
+sudo pm2 start wifi-ble.js --name wifi-ble
+sudo pm2 start mesh-music.js --name mesh-music
+
+# Service enable kar (boot vr auto start sathi)
+sudo systemctl enable pm2-root
+
+# Ata start kar
+sudo systemctl start pm2-root
+
+# Status check kar
+systemctl status pm2-root
+
+sudo pm2 startup
+Sudo pm2 startup systemd
+
+sudo pm2 save
