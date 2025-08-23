@@ -1,4 +1,3 @@
-
 const bleno = require('@abandonware/bleno');
 
 const fs = require("fs");
@@ -21,7 +20,7 @@ class StatusCharacteristic extends bleno.Characteristic {
 
   onSubscribe(maxValueSize, updateValueCallback) {
     updateStatus = updateValueCallback;
-    console.log("📡 Android subscribed for status updates");
+    console.log(" ^=^s  Android subscribed for status updates");
     this.sendStatus("READY");
   }
 
@@ -32,7 +31,7 @@ class StatusCharacteristic extends bleno.Characteristic {
   sendStatus(msg) {
     if (updateStatus) {
       updateStatus(Buffer.from(msg, "utf8"));
-      console.log("➡️ Status sent:", msg);
+      console.log(" ^~   ^o Status sent:", msg);
     }
   }
 }
@@ -118,7 +117,7 @@ const wifiChar = new WifiCharacteristic(statusChar);
 
 bleno.on("stateChange", (state) => {
   if (state === "poweredOn") {
-    console.log("🚀 BLE ON, advertising...");
+    console.log(" ^=^z^` BLE ON, advertising...");
     bleno.startAdvertising("WaddleBeats-01", [SERVICE_UUID]);
   } else {
     bleno.stopAdvertising();
@@ -133,6 +132,7 @@ bleno.on("advertisingStart", (err) => {
         characteristics: [wifiChar, statusChar],
       }),
     ]);
-    console.log("✅ BLE Service ready");
+    console.log(" ^|^e BLE Service ready");
   }
 });
+
