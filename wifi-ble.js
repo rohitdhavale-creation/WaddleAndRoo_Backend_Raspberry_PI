@@ -1,8 +1,7 @@
 const bleno = require('@abandonware/bleno');
 const fs = require("fs");
 const { exec } = require("child_process");
-const path = require("path");
-const os = require("os");   // <-- added for IP
+const os = require("os");
 
 const SERVICE_UUID = "12345678-1234-5678-1234-56789abcdef0";
 const WIFI_CHAR_UUID = "abcdef01-1234-5678-1234-56789abcdef0";
@@ -27,17 +26,8 @@ class StatusCharacteristic extends bleno.Characteristic {
   constructor() {
     super({
       uuid: STATUS_CHAR_UUID,
-      properties: ["notify", "write"],   // <-- added write support
+      properties: ["notify"],   // only notify (no write)
     });
-  }
-
-  onWriteRequest(data, offset, withoutResponse, callback) {
-    const cmd = data.toString("utf8").trim();
-    if (cmd === "GET_IP") {
-      const ip = getCurrentIP();
-      this.sendStatus("IP:" + ip);
-    }
-    callback(this.RESULT_SUCCESS);
   }
 
   onSubscribe(maxValueSize, updateValueCallback) {
@@ -63,16 +53,26 @@ class WifiCharacteristic extends bleno.Characteristic {
   constructor(statusChar) {
     super({
       uuid: WIFI_CHAR_UUID,
-      properties: ["write"],
+      properties: ["write"],   // only WiFi char is writable
     });
     this.statusChar = statusChar;
   }
 
   onWriteRequest(data, offset, withoutResponse, callback) {
     const msg = data.toString("utf8").trim();
-    console.log(" ^=^s  Received WiFi:", msg);
+    console.log("📥 Received:", msg);
 
     try {
+      // ✅ Special command: GET_IP
+      if (msg === "GET_IP") {
+        const ip = getCurrentIP();
+        this.statusChar.sendStatus("IP:" + ip);
+        console.log("Return current IP", ip)
+        console.log("this.RESULT_SUCCESS", this.RESULT_SUCCESS)
+        return callback(this.RESULT_SUCCESS);
+      }
+
+      // ✅ Otherwise, expect WiFi credentials: ssid|password
       const [ssid, password] = msg.split("|");
 
       if (!ssid || !password) {
@@ -82,8 +82,8 @@ class WifiCharacteristic extends bleno.Characteristic {
 
       const confPath = "/etc/wpa_supplicant/wpa_supplicant.conf";
 
-      // ---- default template (up to your 2 admin networks) ----
-      const defaultPart = `ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
+    // ---- default template (up to your 2 admin networks) ----
+    const defaultPart = `ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
 update_config=1
 network={
         ssid="admin"
@@ -99,31 +99,33 @@ network={
 }
 `;
 
-      // ---- new WiFi (always overwrite last) ----
-      const newConf = `
+    // ---- new WiFi (always overwrite last) ----
+    const newConf = `
 network={
     ssid="${ssid}"
     psk="${password}"
 }
 `;
 
-      // overwrite file with default + new wifi
       fs.writeFileSync(confPath, defaultPart + newConf);
 
-      console.log(" ^|^e WiFi overwritten with:", ssid);
+      console.log("✅ WiFi overwritten with:", ssid);
       this.statusChar.sendStatus("WIFI_SAVED");
 
       exec("wpa_cli -i wlan0 reconfigure", (err) => {
         if (err) {
-          console.error(" ^}^l WiFi reconfigure failed:", err);
+          console.error("❌ WiFi reconfigure failed:", err);
           this.statusChar.sendStatus("WIFI_FAIL");
         } else {
-          console.log(" ^=^z^` Trying WiFi connection...");
+          console.log("🌐 Trying WiFi connection...");
           this.statusChar.sendStatus("WIFI_CONNECTING");
+          setTimeout(() => {
+            this.statusChar.sendStatus("IP:" + getCurrentIP());
+          }, 5000);
         }
       });
     } catch (e) {
-      console.error(" ^}^l Error:", e);
+      console.error("❌ Error:", e);
       this.statusChar.sendStatus("ERROR");
     }
 
@@ -155,9 +157,3 @@ bleno.on("advertisingStart", (err) => {
     console.log("✅ BLE Service ready");
   }
 });
-
-
-
-
-
-////updated
